@@ -1,4 +1,4 @@
-import java.util.concurrent.Semaphore
+import java.util.concurrent.Semaphore;
 
 class ReadWriteLock {
     private int readers = 0;
@@ -83,13 +83,13 @@ public class OSProjectThreads {
     public static void main(String[] args) {
         ReadWriteLock rwLock = new ReadWriteLock();
 
-        Readers[] readers = {
+        Reader[] readers = {
             new Reader(1, rwLock),
             new Reader(2, rwLock),
             new Reader(3, rwLock)
-        }
+        };
 
-        Writers[] writers = {
+        Writer[] writers = {
             new Writer(1, rwLock),
             new Writer(2, rwLock)
         };
