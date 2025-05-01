@@ -4,18 +4,22 @@ import java.util.concurrent.Semaphore;
 
 class ReadWriteLock {
     private int readers = 0;
+    private int watingWriters = 0;
     private final Semaphore mutex = new Semaphore(1);
     private final Semaphore writeLock = new Semaphore(1);
+    private final Semaphore readBlock = new Semaphore(1);
 
     public void startRead(int id) throws InterruptedException {
+        readBlock.acquire();
         mutex.acquire();
         readers++;
         if (readers == 1) {
             writeLock.acquire();
         }
-        System.out.println("[Reader " + id + "] Started Reading. Readers = " + readers);
-
         mutex.release();
+        readBlock.release();
+
+        System.out.println("[Reader " + id + "] Started Reading. Readers = " + readers);
     }
 
     public void endRead(int id) throws InterruptedException {
@@ -30,6 +34,13 @@ class ReadWriteLock {
     }
 
     public void startWrite(int id) throws InterruptedException {
+        mutex.acquire();
+        watingWriters++;
+        if (watingWriters == 1) {
+            readBlock.acquire();
+        }
+        mutex.release();
+
         System.out.println("[Writer " + id + "] Waiting to write...");
         writeLock.acquire();
         System.out.println("[Writer " + id + "] Started Writing.");
@@ -38,6 +49,13 @@ class ReadWriteLock {
     public void endWrite(int id) throws InterruptedException {
         System.out.println("[Writer " + id + "] Finished Writing.");
         writeLock.release();
+
+        mutex.acquire();
+        watingWriters--;
+        if (watingWriters == 0) {
+            readBlock.release();
+        }
+        mutex.release();
     }
 }
 
