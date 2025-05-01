@@ -1,3 +1,5 @@
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 
 class ReadWriteLock {
@@ -43,15 +45,16 @@ class Reader extends Thread {
     private final int id;
     private final ReadWriteLock rwLock;
 
-    public Reader(int id, ReadWriteLock rwLock) {
+    public Reader(int id, int burstTime, ReadWriteLock rwLock) {
         this.id = id;
+        this.burstTime = burstTime;
         this.rwLock = rwLock;
     }
 
     public void run() {
         try {
             rwLock.startRead(id);
-            Thread.sleep(1000); // Simulate reading
+            Thread.sleep(burstTime * 1000L); // Simulate reading
             rwLock.endRead(id);
         } catch (InterruptedException e) {
             System.err.println("Reader " + id + " interrupted.");
@@ -63,15 +66,16 @@ class Writer extends Thread {
     private final int id;
     private final ReadWriteLock rwLock;
 
-    public Writer(int id, ReadWriteLock rwLock) {
+    public Writer(int id, int burstTime, ReadWriteLock rwLock) {
         this.id = id;
+        this.burstTime = burstTime;
         this.rwLock = rwLock;
     }
 
     public void run() {
         try {
             rwLock.startWrite(id);
-            Thread.sleep(1000); // Simulate writing
+            Thread.sleep(burstTime * 1000L); // Simulate writing
             rwLock.endWrite(id);
         } catch (InterruptedException e) {
             System.err.println("Writer " + id + " interrupted.");
@@ -82,22 +86,38 @@ class Writer extends Thread {
 public class OSProjectThreads {
     public static void main(String[] args) {
         ReadWriteLock rwLock = new ReadWriteLock();
+        List<Thread> threads = new ArrayList<>();
 
-        Reader[] readers = {
-            new Reader(1, rwLock),
-            new Reader(2, rwLock),
-            new Reader(3, rwLock)
-        };
+        try (BufferedReader br = new BufferedReader(new FileReader("lib/processes.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length < 2) continue;
 
-        Writer[] writers = {
-            new Writer(1, rwLock),
-            new Writer(2, rwLock)
-        };
+                String type = parts[0];
+                int id = Integer.parseInt(parts[1]);
+                int burst = Integer.parseInt(parts[2]);
 
-        readers[0].start();
-        writers[0].start();
-        readers[1].start();
-        writers[1].start();
-        readers[2].start();
+                if (type.equalsIgnoreCase("R")) {
+                    threads.add(new Reader(id, burst, rwLock));
+                } else if (type.equalsIgnoreCase("W")) {
+                    threads.add(new Writer(id, burst, rwLock));
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading processes file: " + e.getMessage());
+            return;
+        }
+
+        for (Thread thread : threads) {
+            thread.start();
+        }
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException ignored) {}
+        }
+
+        System.out.println("All threads have finished execution.");
     }
 }
